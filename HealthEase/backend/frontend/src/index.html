@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>HealthEase — Dashboard (Multiple Ambulance Dispatch)</title>
+  <style>
+    :root{--primary:#1976d2;--accent:#4caf50;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:#f3f6f8;color:#122}
+    header{background:linear-gradient(90deg,var(--primary),#43a047);color:#fff;padding:14px 18px;text-align:center;font-size:20px}
+    .topbar{display:flex;gap:8px;padding:12px;justify-content:center;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.06);position:sticky;top:0;z-index:20}
+    .topbar button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:var(--primary);color:white;font-weight:700}
+    .layout{display:flex;gap:16px;padding:18px;align-items:flex-start}
+    .left{width:380px}
+    .right{flex:1}
+    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.06);margin-bottom:12px}
+    .small{font-size:13px;color:#666}
+    .muted{color:#777;font-size:13px}
+    input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9ef;margin-top:8px;box-sizing:border-box}
+    .controls{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .item{padding:10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid #f0f0f0;background:#fff}
+    .badge{padding:6px 8px;border-radius:8px;font-weight:700;font-size:13px;display:inline-block}
+    .badge.green{background:#e8f5e9;color:#116644}
+    .badge.red{background:#fff2f2;color:#b00020}
+    .badge.yellow{background:#fff9e5;color:#9a6b00}
+    .btn.primary{background:var(--primary);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .btn.ghost{background:#f1f1f1;color:#222;border:0;padding:7px 10px;border-radius:8px;cursor:pointer}
+    .btn.danger{background:#d32f2f;color:#fff;border:0;padding:7px 10px;border-radius:8px;cursor:pointer}
+    .track-card{background:#fff;border-radius:10px;padding:12px;box-shadow:0 8px 22px rgba(13,38,59,0.06);margin-bottom:12px}
+    .progress-strip{height:12px;background:#f1f5f1;border-radius:8px;overflow:hidden;margin-top:8px}
+    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#66bb6a);transition:width .8s linear}
+    .session-grid{display:flex;flex-direction:column;gap:10px}
+    .session-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .session-left{display:flex;flex-direction:column}
+    .msg{padding:10px;border-radius:8px}
+    .msg.ok{background:#eafaf0;color:#116644}
+    .msg.warn{background:#fff4e5;color:#a65a00}
+    .msg.err{background:#ffecec;color:#8a1b1b}
+    canvas.mini-map{ background: linear-gradient(180deg,#e9f6ee,#f6fbf8); border-radius:8px; box-shadow:0 6px 14px rgba(0,0,0,0.06); display:block; }
+    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .modal-content{background:#fff;padding:20px;border-radius:12px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto}
+    .modal-header{font-size:18px;font-weight:700;margin-bottom:12px}
+    .payment-option{padding:12px;border:2px solid #e0e0e0;border-radius:8px;margin:8px 0;cursor:pointer;transition:all 0.2s}
+    .payment-option:hover{border-color:var(--primary);background:#f5f9ff}
+    .payment-option.selected{border-color:var(--primary);background:#e3f2fd}
+    .calling-modal{text-align:center}
+    .calling-icon{font-size:64px;margin:20px 0;animation:pulse 1.5s infinite}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    .error-text{color:#d32f2f;font-size:12px;margin-top:4px}
+    @media (max-width:900px){ .layout{flex-direction:column} .left{width:100%} }
+  </style>
+</head>
+<body>
+  <header>🏥 HealthEase — Live Dashboard</header>
+
+  <div class="topbar">
+    <button type="button" onclick="showPanel('ambulance')">🚑 Ambulance</button>
+    <button type="button" onclick="showPanel('doctors')">👨‍⚕️ Doctors</button>
+    <button type="button" onclick="showPanel('appointments')">📅 Appointments</button>
+    <button type="button" onclick="showPanel('medicines')">💊 Medicine & Delivery</button>
+    <button type="button" onclick="showPanel('telecalling')">📞 Telecalling</button>
+  </div>
+
+  <div class="layout">
+    <div class="left">
+      <!-- AMBULANCE PANEL -->
+      <div id="panel-ambulance" class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Ambulances</strong><span class="muted" id="ambCount">loading…</span>
+        </div>
+
+        <div style="margin-top:10px;">
+          <input id="targetInput" placeholder="Target (lat,lon) — or use 'Use my location'">
+          <div class="controls">
+            <button id="useMyLocBtn" type="button" class="btn primary">Use my location</button>
+          </div>
+        </div>
+
+        <div id="ambulanceList" style="margin-top:12px; max-height:420px; overflow:auto;"></div>
+      </div>
+
+      <!-- DOCTORS PANEL -->
+      <div id="panel-doctors" class="card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center"><strong>Doctors</strong><span class="muted">timings & availability</span></div>
+        <div style="margin-top:10px;">
+          <input id="docSearch" placeholder="Search by name"/>
+          <select id="specFilter">
+            <option value="">All specializations</option>
+            <option value="Cardiologist">Cardiologist</option>
+            <option value="Dermatologist">Dermatologist</option>
+            <option value="Neurologist">Neurologist</option>
+            <option value="Pediatrician">Pediatrician</option>
+            <option value="Orthopedic">Orthopedic</option>
+          </select>
+          <div class="controls">
+            <button type="button" class="btn primary" onclick="filterDoctors()">Filter</button>
+          </div>
+        </div>
+        <div id="doctorsList" style="margin-top:12px; max-height:380px; overflow:auto;"></div>
+      </div>
+
+      <!-- APPOINTMENTS PANEL -->
+      <div id="panel-appointments" class="card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center"><strong>Book Appointment</strong></div>
+        <div style="margin-top:8px;">
+          <input id="apptName" placeholder="Patient name (letters only)">
+          <div id="nameError" class="error-text"></div>
+          <input id="apptMobile" placeholder="Mobile (10 digits)">
+          <div id="mobileError" class="error-text"></div>
+          <select id="apptDoctor"><option value="">-- Select doctor --</option></select>
+          <input type="date" id="apptDate">
+          <div id="dateError" class="error-text"></div>
+          <div class="controls">
+            <button type="button" class="btn primary" onclick="createAppointment()">Book</button>
+          </div>
+        </div>
+        <div id="appointmentsList" style="margin-top:12px; max-height:260px; overflow:auto;"></div>
+      </div>
+
+      <!-- MEDICINES PANEL -->
+      <div id="panel-medicines" class="card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center"><strong>Medicine & Delivery</strong></div>
+        <div style="margin-top:8px;">
+          <input id="medSearch" placeholder="Enter medicine name (letters only)">
+          <div id="medSearchError" class="error-text"></div>
+          <div class="controls">
+            <button type="button" class="btn primary" onclick="searchMedicines()">Search</button>
+            <button type="button" class="btn ghost" onclick="loadAllMedicines()">Show All</button>
+          </div>
+        </div>
+        <div id="medList" style="margin-top:12px; max-height:380px; overflow:auto;"></div>
+      </div>
+
+      <!-- TELECALLING PANEL -->
+      <div id="panel-telecalling" class="card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center"><strong>Telecalling Support</strong></div>
+        <div style="margin-top:8px;">
+          <div class="small muted" style="margin-bottom:10px;">24/7 Emergency Support Numbers</div>
+        </div>
+        <div id="teleList" style="margin-top:10px; max-height:420px; overflow:auto;"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <!-- TRACK AREA: holds multiple tracker cards -->
+      <div id="trackArea" class="card">
+        <div id="trackPlaceholder" class="small muted">No active tracking — dispatch ambulances to see trackers appear here.</div>
+        <div id="sessions" class="session-grid" style="margin-top:12px"></div>
+      </div>
+
+      <div id="infoBox" class="card" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+
+  <script>
+  /* ========== CONFIG ========== */
+  const API_BASE = "http://localhost:5000/api";
+  const POLL_INTERVAL_MS = 800;
+  const SPEED_MULTIPLIER = 3.0;
+
+  /* ========== UTILS ========== */
+  const $ = id => document.getElementById(id);
+  function elCreate(tag, props = {}){ const e = document.createElement(tag); for(const k in props){ if(k==='class') e.className = props[k]; else if(k==='text') e.textContent = props[k]; else e.setAttribute(k, props[k]); } return e; }
+  function toRad(v){ return v * Math.PI/180; }
+  function haversineMeters(lat1,lon1,lat2,lon2){ const R=6371e3; const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
+  function distanceKm(a,b){ if(!a||!b) return NaN; return haversineMeters(a.lat,a.lng,b.lat,b.lng)/1000; }
+  function escapeHTML(s){ if(!s) return ''; return String(s).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;",'`':'&#96;'}[c])); }
+  function validateName(name){ return /^[a-zA-Z\s]+$/.test(name); }
+  function validateMobile(mobile){ return /^\d{10}$/.test(mobile); }
+
+  /* ========== STATE ========== */
+  let ambulances = [];
+  let lastKnownCoords = null;
+  const listEl = $('ambulanceList');
+  const ambCountEl = $('ambCount');
+  const useMyLocBtn = $('useMyLocBtn');
+  const targetInput = $('targetInput');
+  const sessionsContainer = $('sessions');
+  const sessions = {};
+
+  /* ========== MEDICINE INVENTORY ========== */
+  let medicineInventory = [
+    { id: 1, name: 'Paracetamol', shop: 'City Pharmacy', stock: 150, price: 25 },
+    { id: 2, name: 'Aspirin', shop: 'HealthMart', stock: 200, price: 30 },
+    { id: 3, name: 'Amoxicillin', shop: 'MediPlus', stock: 80, price: 120 },
+    { id: 4, name: 'Ibuprofen', shop: 'City Pharmacy', stock: 120, price: 40 },
+    { id: 5, name: 'Cetirizine', shop: 'HealthMart', stock: 95, price: 15 },
+    { id: 6, name: 'Metformin', shop: 'WellCare', stock: 60, price: 85 }
+  ];
+
+  /* ========== APPOINTMENTS STATE ========== */
+  let appointments = [];
+  let appointmentIdCounter = 1;
+
+  /* ========== DOCTORS DATA ========== */
+  const demoDoctors = [
+    { _id: 'D1', name:'Dr. Smith', specialization:'Cardiologist', available:true, availabilityTimes:['09:00-12:00','14:00-18:00'] },
+    { _id: 'D2', name:'Dr. Jane', specialization:'Dermatologist', available:false, availabilityTimes:[], nextAvailable:'2026-10-30' },
+    { _id: 'D3', name:'Dr. Mike', specialization:'Neurologist', available:true, availabilityTimes:['10:00-16:00'] },
+    { _id: 'D4', name:'Dr. Sarah', specialization:'Pediatrician', available:true, availabilityTimes:['08:00-14:00'] },
+    { _id: 'D5', name:'Dr. Brown', specialization:'Orthopedic', available:true, availabilityTimes:['10:00-17:00'] },
+  ];
+
+  /* ========== TELECALLING SUPPORT ========== */
+  const supportNumbers = [
+    { id: 1, number: '108', caption: 'Emergency Ambulance Services', icon: '🚑' },
+    { id: 2, number: '102', caption: 'Medical Emergency Helpline', icon: '🏥' },
+    { id: 3, number: '1800-123-4567', caption: 'Heart & Cardiology Support', icon: '❤️' },
+    { id: 4, number: '1800-234-5678', caption: 'Neurological Emergencies', icon: '🧠' },
+    { id: 5, number: '1800-345-6789', caption: 'General Medical Consultation', icon: '🩺' },
+    { id: 6, number: '1800-456-7890', caption: 'Mental Health Crisis Support', icon: '💚' }
+  ];
+
+  /* ========== Load ambulances ========== */
+  function normalizeAmb(a){
+    const id = a._id ?? a.id ?? String(Math.random()).slice(2,9);
+    const name = a.name ?? a.title ?? ('Amb ' + id);
+    let lat=undefined,lng=undefined;
+    if(a.location){ lat = a.location.lat ?? a.location.latitude; lng = a.location.lng ?? a.location.lon ?? a.location.longitude; }
+    else { lat = a.lat ?? a.latitude; lng = a.lon ?? a.longitude ?? a.lng; }
+    return { _id: id, name, location: (lat!=null && lng!=null) ? { lat: parseFloat(lat), lng: parseFloat(lng) } : {}, speedKmph: a.speedKmph ?? a.speed ?? 40, status: a.status ?? 'Available', raw: a };
+  }
+
+  async function loadAmbulances(){
+    try{
+      const res = await fetch(API_BASE + '/ambulances');
+      if(!res.ok) throw new Error('fetch failed');
+      const arr = await res.json();
+      ambulances = (Array.isArray(arr) ? arr : []).map(normalizeAmb);
+      if(!ambulances.length) throw new Error('no ambulances');
+    } catch(err){
+      console.warn('Failed loading backend ambulances, using fallback demo', err);
+      ambulances = [
+        { _id:'A1', name:'Ambulance A', location:{lat:12.9719,lng:77.5946}, speedKmph:40, status:'Available' },
+        { _id:'A2', name:'Ambulance B', location:{lat:12.9667,lng:77.5995}, speedKmph:35, status:'Available' },
+        { _id:'A3', name:'Ambulance C', location:{lat:12.9750,lng:77.5840}, speedKmph:45, status:'Busy' },
+        { _id:'A4', name:'Ambulance D', location:{lat:12.9790,lng:77.6000}, speedKmph:42, status:'Available' },
+        { _id:'A5', name:'Ambulance E', location:{lat:12.9650,lng:77.5820}, speedKmph:38, status:'Available' }
+      ];
+    }
+    renderAmbList();
+  }
+
+  function renderAmbList(){
+    listEl.innerHTML = '';
+    ambCountEl.innerText = `${ambulances.length} listed`;
+    ambulances.forEach(a=>{
+      const item = elCreate('div',{class:'item'});
+      const left = elCreate('div');
+      const distanceText = (a.location && lastKnownCoords) ? ` • ${distanceKm(a.location,lastKnownCoords).toFixed(2)} km` : '';
+      left.innerHTML = `<div style="font-weight:700">${escapeHTML(a.name)}</div>
+                        <div class="small muted">${escapeHTML(a.status)}${distanceText}</div>`;
+      const right = elCreate('div');
+      const badge = elCreate('span',{class: /available/i.test(a.status) ? 'badge green' : 'badge red'});
+      badge.textContent = a.status;
+      const dispatchBtn = elCreate('button',{type:'button'}); dispatchBtn.className='btn primary'; dispatchBtn.textContent='Dispatch & Track';
+      const cancelBtn = elCreate('button',{type:'button'}); cancelBtn.className='btn ghost'; cancelBtn.textContent='Cancel';
+      dispatchBtn.style.marginLeft='8px';
+      dispatchBtn.onclick = ()=> onDispatchClicked(a);
+      cancelBtn.onclick = ()=> onCancelClicked(a);
+      if(!/available/i.test(a.status)) dispatchBtn.disabled = true;
+      right.appendChild(badge); right.appendChild(dispatchBtn); right.appendChild(cancelBtn);
+      item.appendChild(left); item.appendChild(right);
+      listEl.appendChild(item);
+    });
+  }
+
+  /* ========== Session management ========== */
+  function createSessionCard(amb){
+    const card = elCreate('div',{class:'track-card'});
+    const id = amb._id;
+    card.innerHTML = `
+      <div class="session-row">
+        <div class="session-left">
+          <div style="font-weight:800" id="title-${id}">Tracking — ${escapeHTML(amb.name)}</div>
+          <div class="small muted" id="status-${id}">Assigned — initializing</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="eta-${id}" class="small muted">ETA: —</div>
+          <button type="button" id="cancel-${id}" class="btn ghost">Cancel</button>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div id="dist-${id}">Distance: —</div>
+        <div class="progress-strip"><div id="prog-${id}" class="progress-fill"></div></div>
+      </div>
+      <div style="margin-top:10px" class="map-wrap">
+        <canvas id="canvas-${id}" class="mini-map" width="520" height="180"></canvas>
+      </div>
+    `;
+    sessionsContainer.prepend(card);
+    return card;
+  }
+
+  function startSession(amb, target){
+    if(!/available/i.test(amb.status)){ alert(`${amb.name} is not available for dispatch.`); return; }
+    const id = amb._id;
+    if(sessions[id]){ alert(`${amb.name} is already tracked.`); return; }
+
+    const card = createSessionCard(amb);
+    const canvas = $(`canvas-${id}`);
+    const ctx = canvas.getContext('2d');
+
+    const start = (amb.location && amb.location.lat!=null && amb.location.lng!=null) ? { lat: amb.location.lat, lng: amb.location.lng } : { lat: target.lat + 0.01, lng: target.lng + 0.01 };
+    const totalM = haversineMeters(start.lat,start.lng,target.lat,target.lng);
+    const speedKmph = (amb.speedKmph || 40) * SPEED_MULTIPLIER;
+    const speedMps = (speedKmph*1000)/3600;
+    const steps = Math.max(20, Math.ceil(totalM/80));
+    const waypoints = buildLinearWaypoints(start, target, steps);
+
+    const session = {
+      ambulance: amb,
+      id,
+      card,
+      canvas,
+      ctx,
+      waypoints,
+      wpIndex:0,
+      current: {...start},
+      target,
+      speedMps,
+      totalKm: totalM/1000,
+      sim: { remainingM: totalM, startM: totalM, lastTick: performance.now() },
+      running: true,
+      interval: null
+    };
+    sessions[id] = session;
+
+    amb.status = 'Dispatched';
+    renderAmbList();
+    fetch(`${API_BASE}/ambulances/${encodeURIComponent(id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Dispatched' }) }).catch(()=>{});
+
+    card.querySelector(`#cancel-${id}`).onclick = () => userCancelSession(id, 'Cancelled by user');
+
+    session.interval = setInterval(()=> stepSession(session), POLL_INTERVAL_MS);
+
+    drawSessionCanvas(session);
+    updateSessionUI(session);
+  }
+
+  function buildLinearWaypoints(start,target,count){
+    const arr = [];
+    for(let i=0;i<=count;i++){
+      const t = i/count;
+      arr.push({ lat: start.lat + (target.lat - start.lat)*t, lng: start.lng + (target.lng - start.lng)*t });
+    }
+    return arr;
+  }
+
+  function stepSession(s){
+    if(!s || !s.running) return;
+    const now = performance.now();
+    const dt = (now - s.sim.lastTick) / 1000;
+    s.sim.lastTick = now;
+    const nextWp = s.waypoints[Math.min(s.wpIndex + 1, s.waypoints.length - 1)];
+    const remaining = haversineMeters(s.current.lat,s.current.lng, nextWp.lat,nextWp.lng);
+    if(remaining < 6){
+      s.wpIndex = Math.min(s.wpIndex + 1, s.waypoints.length - 1);
+      if(s.wpIndex >= s.waypoints.length - 1){
+        s.current = {...s.target};
+        s.sim.remainingM = 0;
+        finishSession(s, 'Arrived (sim)');
+        return;
+      }
+    } else {
+      const move = Math.min(s.speedMps * dt, remaining);
+      const frac = (remaining > 0) ? (move / remaining) : 1;
+      const newLat = s.current.lat + (nextWp.lat - s.current.lat) * frac;
+      const newLng = s.current.lng + (nextWp.lng - s.current.lng) * frac;
+      s.current.lat = newLat; s.current.lng = newLng;
+      s.sim.remainingM = Math.max(0, s.sim.remainingM - move);
+    }
+
+    drawSessionCanvas(s);
+    updateSessionUI(s);
+  }
+
+  function drawSessionCanvas(s){
+    const canvas = s.canvas;
+    const ctx = s.ctx;
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    const pts = [ ...s.waypoints.slice(0, s.waypoints.length), s.current, s.target ];
+    const lats = pts.map(p => p.lat), lons = pts.map(p => p.lng);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLon = Math.min(...lons), maxLon = Math.max(...lons);
+    const padLat = (maxLat - minLat) * 0.18 + 0.0005;
+    const padLon = (maxLon - minLon) * 0.18 + 0.0005;
+    const latMin = minLat - padLat, latMax = maxLat + padLat, lonMin = minLon - padLon, lonMax = maxLon + padLon;
+    const lonToX = lon => ((lon - lonMin)/(lonMax - lonMin || 1))*w;
+    const latToY = lat => (1 - (lat - latMin)/(latMax - latMin || 1))*h;
+
+    ctx.beginPath();
+    for(let i=0;i<s.waypoints.length;i++){
+      const p = s.waypoints[i];
+      const x = lonToX(p.lng), y = latToY(p.lat);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(200,230,210,0.9)'; ctx.stroke();
+
+    const tx = lonToX(s.target.lng), ty = latToY(s.target.lat);
+    ctx.beginPath(); ctx.arc(tx, ty, 8, 0, Math.PI*2); ctx.fillStyle = 'rgba(38,109,247,0.18)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(tx, ty, 4, 0, Math.PI*2); ctx.fillStyle = '#276df7'; ctx.fill();
+
+    const ax = lonToX(s.current.lng), ay = latToY(s.current.lat);
+    drawAmbIcon(ctx, ax, ay);
+
+    ctx.fillStyle = '#102027'; ctx.font = '12px Arial';
+    ctx.fillText(`${s.ambulance.name}`, ax + 10, ay + 4);
+  }
+
+  function drawAmbIcon(ctx, x, y){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.fillStyle = '#e53935';
+    ctx.fillRect(-12, -8, 24, 16);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-6, -5, 12, 10);
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(-6, 8, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, 8, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function updateSessionUI(s){
+    const id = s.id;
+    const distEl = $(`dist-${id}`), etaEl = $(`eta-${id}`), progEl = $(`prog-${id}`), statusEl = $(`status-${id}`);
+    const remainingKm = (s.sim.remainingM/1000);
+    const etaMin = (s.speedMps > 0) ? (s.sim.remainingM / s.speedMps / 60) : null;
+    distEl.innerText = `Distance: ${remainingKm.toFixed(2)} km`;
+    
+    if(s.sim.remainingM <= 0) {
+      etaEl.innerText = `ETA: 0 min`;
+      statusEl.innerText = 'Arriving now';
+    } else {
+      etaEl.innerText = `ETA: ${etaMin !== null ? Math.max(1,Math.ceil(etaMin)) + ' min' : '—'}`;
+      statusEl.innerText = 'En route (sim)';
+    }
+    
+    const prog = Math.min(1, Math.max(0, ( (s.sim.startM - s.sim.remainingM) / (s.sim.startM || 1) )));
+    progEl.style.width = (prog*100).toFixed(1) + '%';
+  }
+
+  function finishSession(s, reason){
+    if(s.interval) clearInterval(s.interval);
+    s.running = false;
+    s.card.innerHTML = `<div class="msg ok">✅ ${escapeHTML(s.ambulance.name)} has arrived. (${reason})</div>`;
+    fetch(`${API_BASE}/ambulances/${encodeURIComponent(s.id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Available' }) }).catch(()=>{});
+    const idx = ambulances.findIndex(x=>x._id === s.id); if(idx>=0) { ambulances[idx].status = 'Available'; renderAmbList(); }
+    setTimeout(()=> { if(sessions[s.id]) { delete sessions[s.id]; s.card.remove(); } }, 3000);
+  }
+
+  function userCancelSession(id, reason){
+    const s = sessions[id];
+    if(!s) return;
+    if(s.interval) clearInterval(s.interval);
+    s.running = false;
+    s.card.innerHTML = `<div class="msg err">Dispatch cancelled for ${escapeHTML(s.ambulance.name)} (${reason}).</div>`;
+    fetch(`${API_BASE}/ambulances/${encodeURIComponent(id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Available' }) }).catch(()=>{});
+    const idx = ambulances.findIndex(x=>x._id === id); if(idx>=0){ ambulances[idx].status = 'Available'; renderAmbList(); }
+    setTimeout(()=> { if(sessions[id]) { delete sessions[id]; s.card.remove(); } }, 2200);
+  }
+
+  /* ========== UI actions ========== */
+  function parseLatLng(text){
+    if(!text) return null;
+    const m = text.trim().match(/(-?\d+(\.\d+)?)[, ]+\s*(-?\d+(\.\d+)?)/);
+    if(!m) return null;
+    return { lat: parseFloat(m[1]), lng: parseFloat(m[3]) };
+  }
+
+  async function onDispatchClicked(a){
+    if(!/available/i.test(a.status)){ alert(`${a.name} cannot be dispatched — status: ${a.status}`); return; }
+    let target = parseLatLng(targetInput.value);
+    if(!target){
+      if(lastKnownCoords) target = lastKnownCoords;
+      else {
+        if(!confirm('Target not provided. Use city center fallback?')) return;
+        target = { lat: 12.9716, lng: 77.5946 };
+      }
+    }
+    startSession(a, target);
+  }
+
+  async function onCancelClicked(a){
+    const id = a._id;
+    if(sessions[id]) { userCancelSession(id, 'User cancelled'); return; }
+    try{
+      await fetch(`${API_BASE}/ambulances/${encodeURIComponent(id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Available' }) });
+      a.status = 'Available';
+      renderAmbList();
+      $('trackArea').insertAdjacentHTML('afterbegin', `<div class="msg warn">Set ${escapeHTML(a.name)} to Available (best-effort).</div>`);
+    } catch(e){
+      alert('Cancel failed: ' + (e.message || e));
+    }
+  }
+
+  /* ========== Use my location ========== */
+  useMyLocBtn.onclick = ()=>{
+    if(!navigator.geolocation) return alert('Geolocation unsupported by this browser.');
+    useMyLocBtn.disabled = true; useMyLocBtn.textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(pos=>{
+      useMyLocBtn.disabled = false; useMyLocBtn.textContent = 'Use my location';
+      lastKnownCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      targetInput.value = `${lastKnownCoords.lat.toFixed(6)}, ${lastKnownCoords.lng.toFixed(6)}`;
+    }, err=>{
+      useMyLocBtn.disabled = false; useMyLocBtn.textContent = 'Use my location';
+      alert('Could not get location: ' + (err.message || err.code));
+    }, { enableHighAccuracy:true, timeout:8000 });
+  };
+
+  /* ========== DOCTORS MODULE ========== */
+  function loadDoctors(){ 
+    const elDoc = $('doctorsList'); 
+    elDoc.innerHTML='';
+    const searchTerm = $('docSearch').value.toLowerCase();
+    const specFilter = $('specFilter').value;
+    
+    const filtered = demoDoctors.filter(d => {
+      const nameMatch = !searchTerm || d.name.toLowerCase().includes(searchTerm);
+      const specMatch = !specFilter || d.specialization === specFilter;
+      return nameMatch && specMatch;
+    });
+    
+    filtered.forEach(d=>{ 
+      const r = elCreate('div',{class:'item'}); 
+      r.innerHTML = `<div><div style="font-weight:700">${escapeHTML(d.name)}</div><div class="small muted">${escapeHTML(d.specialization)} • ${d.availabilityTimes.join(' • ') || 'No schedule'}</div></div>`; 
+      const right = elCreate('div'); 
+      const badge = elCreate('span',{class: d.available ? 'badge green' : 'badge red'}); 
+      badge.textContent = d.available ? 'Available' : 'On Leave'; 
+      right.appendChild(badge); 
+      const btn = elCreate('button',{type:'button'}); 
+      btn.className='btn primary'; 
+      btn.textContent='Book'; 
+      btn.onclick = ()=> { 
+        showPanel('appointments'); 
+        populateDoctorDropdown();
+        $('apptDoctor').value = d._id;
+      }; 
+      right.appendChild(btn); 
+      r.appendChild(right); 
+      elDoc.appendChild(r); 
+    }); 
+  }
+
+  function filterDoctors(){ 
+    loadDoctors(); 
+  }
+
+  function populateDoctorDropdown() {
+    const select = $('apptDoctor');
+    select.innerHTML = '<option value="">-- Select doctor --</option>';
+    demoDoctors.forEach(d => {
+      if(d.available) {
+        const opt = document.createElement('option');
+        opt.value = d._id;
+        opt.textContent = `${d.name} (${d.specialization})`;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  /* ========== APPOINTMENTS MODULE ========== */
+  function createAppointment(){
+    const name = $('apptName').value.trim();
+    const mobile = $('apptMobile').value.trim();
+    const doctorId = $('apptDoctor').value;
+    const date = $('apptDate').value;
+    
+    $('nameError').textContent = '';
+    $('mobileError').textContent = '';
+    $('dateError').textContent = '';
+    
+    let hasError = false;
+    
+    if(!name) {
+      $('nameError').textContent = 'Name is required';
+      hasError = true;
+    } else if(!validateName(name)) {
+      $('nameError').textContent = 'Name should contain only letters';
+      hasError = true;
+    }
+    
+    if(!mobile) {
+      $('mobileError').textContent = 'Mobile number is required';
+      hasError = true;
+    } else if(!validateMobile(mobile)) {
+      $('mobileError').textContent = 'Mobile should be 10 digits';
+      hasError = true;
+    }
+    
+    if(!date) {
+      $('dateError').textContent = 'Date is required';
+      hasError = true;
+    } else {
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if(selectedDate < today) {
+        $('dateError').textContent = 'Cannot book appointments for past dates';
+        hasError = true;
+      }
+    }
+    
+    if(!doctorId) {
+      alert('Please select a doctor');
+      hasError = true;
+    }
+    
+    if(hasError) return;
+    
+    const doctor = demoDoctors.find(d => d._id === doctorId);
+    const appointment = {
+      id: appointmentIdCounter++,
+      name,
+      mobile,
+      doctor: doctor.name,
+      specialization: doctor.specialization,
+      date,
+      status: 'Confirmed'
+    };
+    
+    appointments.push(appointment);
+    
+    $('apptName').value = '';
+    $('apptMobile').value = '';
+    $('apptDoctor').value = '';
+    $('apptDate').value = '';
+    
+    alert('Appointment booked successfully!');
+    loadAppointments();
+  }
+
+  function loadAppointments(){
+    const list = $('appointmentsList');
+    list.innerHTML = '';
+    
+    if(appointments.length === 0) {
+      list.innerHTML = '<div class="small muted">No appointments yet. Book your first appointment above.</div>';
+      return;
+    }
+    
+    appointments.forEach(apt => {
+      const item = elCreate('div', {class: 'item'});
+      item.innerHTML = `
+        <div>
+          <div style="font-weight:700">${escapeHTML(apt.name)}</div>
+          <div class="small muted">${escapeHTML(apt.doctor)} (${escapeHTML(apt.specialization)})</div>
+          <div class="small muted">Date: ${apt.date} | Mobile: ${apt.mobile}</div>
+        </div>
+      `;
+      
+      const right = elCreate('div');
+      const badge = elCreate('span', {class: 'badge green'});
+      badge.textContent = apt.status;
+      
+      const cancelBtn = elCreate('button', {type: 'button'});
+      cancelBtn.className = 'btn danger';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.marginLeft = '8px';
+      cancelBtn.onclick = () => cancelAppointment(apt.id);
+      
+      right.appendChild(badge);
+      right.appendChild(cancelBtn);
+      item.appendChild(right);
+      list.appendChild(item);
+    });
+  }
+
+  function cancelAppointment(id) {
+    if(!confirm('Are you sure you want to cancel this appointment?')) return;
+    appointments = appointments.filter(apt => apt.id !== id);
+    loadAppointments();
+    alert('Appointment cancelled successfully');
+  }
+
+  /* ========== MEDICINES MODULE ========== */
+  function loadAllMedicines(){
+    const elM = $('medList');
+    elM.innerHTML='';
+    
+    medicineInventory.forEach(med => {
+      const r = elCreate('div',{class:'item'});
+      r.innerHTML = `
+        <div>
+          <strong>${escapeHTML(med.name)}</strong>
+          <div class="small muted">${escapeHTML(med.shop)} | ₹${med.price}</div>
+          <div class="small">
+            <span class="${med.stock > 50 ? 'badge green' : (med.stock > 20 ? 'badge yellow' : 'badge red')}" style="font-size:11px">
+              Stock: ${med.stock}
+            </span>
+          </div>
+        </div>
+      `;
+      
+      const btn = elCreate('button',{type:'button'});
+      btn.className='btn primary';
+      btn.textContent='Order';
+      btn.onclick = ()=> showOrderModal(med);
+      if(med.stock === 0) btn.disabled = true;
+      
+      r.appendChild(btn);
+      elM.appendChild(r);
+    });
+  }
+
+  function searchMedicines(){
+    const searchTerm = $('medSearch').value.trim();
+    $('medSearchError').textContent = '';
+    
+    if(searchTerm && !validateName(searchTerm)) {
+      $('medSearchError').textContent = 'Medicine name should contain only letters';
+      return;
+    }
+    
+    const elM = $('medList');
+    elM.innerHTML='';
+    
+    const filtered = medicineInventory.filter(med => 
+      !searchTerm || med.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    if(filtered.length === 0) {
+      elM.innerHTML = '<div class="small muted">No medicines found</div>';
+      return;
+    }
+    
+    filtered.forEach(med => {
+      const r = elCreate('div',{class:'item'});
+      r.innerHTML = `
+        <div>
+          <strong>${escapeHTML(med.name)}</strong>
+          <div class="small muted">${escapeHTML(med.shop)} | ₹${med.price}</div>
+          <div class="small">
+            <span class="${med.stock > 50 ? 'badge green' : (med.stock > 20 ? 'badge yellow' : 'badge red')}" style="font-size:11px">
+              Stock: ${med.stock}
+            </span>
+          </div>
+        </div>
+      `;
+      
+      const btn = elCreate('button',{type:'button'});
+      btn.className='btn primary';
+      btn.textContent='Order';
+      btn.onclick = ()=> showOrderModal(med);
+      if(med.stock === 0) btn.disabled = true;
+      
+      r.appendChild(btn);
+      elM.appendChild(r);
+    });
+  }
+
+  function showOrderModal(medicine) {
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">Order ${escapeHTML(medicine.name)}</div>
+        <div style="margin:16px 0">
+          <div><strong>Price:</strong> ₹${medicine.price}</div>
+          <div><strong>Available Stock:</strong> ${medicine.stock}</div>
+          <div style="margin-top:12px">
+            <label>Quantity:</label>
+            <input type="number" id="orderQuantity" min="1" max="${medicine.stock}" value="1" style="width:100%;margin-top:4px">
+          </div>
+          <div id="totalPrice" style="margin-top:8px;font-weight:700"></div>
+        </div>
+        <div class="modal-header" style="font-size:16px;margin-top:16px">Select Payment Method</div>
+        <div id="paymentOptions"></div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn primary" onclick="proceedWithOrder(${medicine.id})">Proceed</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    `;
+    
+    $('modalRoot').appendChild(modal);
+    
+    const qtyInput = modal.querySelector('#orderQuantity');
+    const updateTotal = () => {
+      const qty = parseInt(qtyInput.value) || 1;
+      modal.querySelector('#totalPrice').textContent = `Total: ₹${qty * medicine.price}`;
+    };
+    qtyInput.oninput = updateTotal;
+    updateTotal();
+    
+    const paymentDiv = modal.querySelector('#paymentOptions');
+    ['Card Payment', 'UPI Payment', 'Cash on Delivery'].forEach(method => {
+      const opt = elCreate('div', {class: 'payment-option'});
+      opt.textContent = method;
+      opt.onclick = () => {
+        modal.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        modal.dataset.paymentMethod = method;
+      };
+      paymentDiv.appendChild(opt);
+    });
+  }
+
+  function proceedWithOrder(medicineId) {
+    const modal = $('modalRoot').querySelector('.modal');
+    const paymentMethod = modal.dataset.paymentMethod;
+    const quantity = parseInt(modal.querySelector('#orderQuantity').value) || 1;
+    
+    if(!paymentMethod) {
+      alert('Please select a payment method');
+      return;
+    }
+    
+    const medicine = medicineInventory.find(m => m.id === medicineId);
+    if(!medicine) return;
+    
+    if(quantity > medicine.stock) {
+      alert('Insufficient stock');
+      return;
+    }
+    
+    closeModal();
+    
+    if(paymentMethod === 'Card Payment') {
+      showCardPaymentModal(medicine, quantity);
+    } else if(paymentMethod === 'UPI Payment') {
+      showUPIPaymentModal(medicine, quantity);
+    } else {
+      confirmOrder(medicine, quantity, 'Cash on Delivery');
+    }
+  }
+
+  function showCardPaymentModal(medicine, quantity) {
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">Card Payment</div>
+        <div style="margin:16px 0">
+          <input type="text" placeholder="Card Number (16 digits)" id="cardNumber" maxlength="19" style="margin-top:8px">
+          <input type="text" placeholder="Cardholder Name" id="cardName" style="margin-top:8px">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" placeholder="MM/YY" id="cardExpiry" maxlength="5" style="width:50%">
+            <input type="text" placeholder="CVV" id="cardCVV" maxlength="3" style="width:50%">
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn primary" onclick="processCardPayment(${medicine.id}, ${quantity})">Pay ₹${quantity * medicine.price}</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    `;
+    $('modalRoot').appendChild(modal);
+    
+    const cardNumberInput = modal.querySelector('#cardNumber');
+    cardNumberInput.oninput = (e) => {
+      let val = e.target.value.replace(/\s/g, '');
+      let formatted = val.match(/.{1,4}/g)?.join(' ') || val;
+      e.target.value = formatted;
+    };
+  }
+
+  function processCardPayment(medicineId, quantity) {
+    const modal = $('modalRoot').querySelector('.modal');
+    const cardNumber = modal.querySelector('#cardNumber').value.replace(/\s/g, '');
+    const cardName = modal.querySelector('#cardName').value;
+    const cardExpiry = modal.querySelector('#cardExpiry').value;
+    const cardCVV = modal.querySelector('#cardCVV').value;
+    
+    if(!cardNumber || cardNumber.length !== 16) {
+      alert('Please enter a valid 16-digit card number');
+      return;
+    }
+    if(!cardName) {
+      alert('Please enter cardholder name');
+      return;
+    }
+    if(!cardExpiry || !/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+      alert('Please enter expiry in MM/YY format');
+      return;
+    }
+    if(!cardCVV || cardCVV.length !== 3) {
+      alert('Please enter 3-digit CVV');
+      return;
+    }
+    
+    closeModal();
+    showProcessingModal();
+    
+    setTimeout(() => {
+      closeModal();
+      const medicine = medicineInventory.find(m => m.id === medicineId);
+      confirmOrder(medicine, quantity, 'Card Payment');
+    }, 2000);
+  }
+
+  function showUPIPaymentModal(medicine, quantity) {
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">UPI Payment</div>
+        <div style="margin:16px 0;text-align:center">
+          <div style="font-size:48px;margin:20px 0">📱</div>
+          <div style="font-weight:700;margin:10px 0">Amount: ₹${quantity * medicine.price}</div>
+          <input type="text" placeholder="Enter UPI ID (e.g., user@upi)" id="upiId" style="margin-top:12px">
+          <div class="small muted" style="margin-top:8px">Or scan QR code in your UPI app</div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn primary" onclick="processUPIPayment(${medicine.id}, ${quantity})">Pay ₹${quantity * medicine.price}</button>
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    `;
+    $('modalRoot').appendChild(modal);
+  }
+
+  function processUPIPayment(medicineId, quantity) {
+    const modal = $('modalRoot').querySelector('.modal');
+    const upiId = modal.querySelector('#upiId').value;
+    
+    if(!upiId || !upiId.includes('@')) {
+      alert('Please enter a valid UPI ID');
+      return;
+    }
+    
+    closeModal();
+    showProcessingModal();
+    
+    setTimeout(() => {
+      closeModal();
+      const medicine = medicineInventory.find(m => m.id === medicineId);
+      confirmOrder(medicine, quantity, 'UPI Payment');
+    }, 2000);
+  }
+
+  function showProcessingModal() {
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content" style="text-align:center">
+        <div style="font-size:48px;margin:20px 0">⏳</div>
+        <div class="modal-header">Processing Payment...</div>
+        <div class="small muted">Please wait</div>
+      </div>
+    `;
+    $('modalRoot').appendChild(modal);
+  }
+
+  function confirmOrder(medicine, quantity, method) {
+    medicine.stock -= quantity;
+    
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content" style="text-align:center">
+        <div style="font-size:64px;margin:20px 0">✅</div>
+        <div class="modal-header">Order Confirmed!</div>
+        <div style="margin:16px 0">
+          <div><strong>${escapeHTML(medicine.name)}</strong></div>
+          <div class="small muted">Quantity: ${quantity}</div>
+          <div class="small muted">Payment Method: ${method}</div>
+          <div style="margin-top:8px;font-weight:700">Total Paid: ₹${quantity * medicine.price}</div>
+        </div>
+        <div class="msg ok" style="margin:12px 0">Your order will be delivered soon!</div>
+        <button class="btn primary" onclick="closeModal(); loadAllMedicines()">Close</button>
+      </div>
+    `;
+    $('modalRoot').appendChild(modal);
+  }
+
+  function closeModal() {
+    $('modalRoot').innerHTML = '';
+  }
+
+  /* ========== TELECALLING MODULE ========== */
+  function loadTelecalling() {
+    const elT = $('teleList');
+    elT.innerHTML = '';
+    
+    supportNumbers.forEach(support => {
+      const r = elCreate('div', {class: 'item'});
+      r.innerHTML = `
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:24px">${support.icon}</span>
+            <div>
+              <strong>${escapeHTML(support.caption)}</strong>
+              <div class="small muted">Call: ${support.number}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const btnContainer = elCreate('div');
+      btnContainer.style.display = 'flex';
+      btnContainer.style.gap = '8px';
+      
+      const callBtn = elCreate('button', {type: 'button'});
+      callBtn.className = 'btn primary';
+      callBtn.textContent = 'Call';
+      callBtn.onclick = () => startCall(support);
+      
+      btnContainer.appendChild(callBtn);
+      r.appendChild(btnContainer);
+      elT.appendChild(r);
+    });
+  }
+
+  let activeCall = null;
+
+  function startCall(support) {
+    const modal = elCreate('div', {class: 'modal'});
+    modal.innerHTML = `
+      <div class="modal-content calling-modal">
+        <div class="calling-icon">📞</div>
+        <div class="modal-header">Calling...</div>
+        <div style="margin:16px 0">
+          <div style="font-weight:700;font-size:18px">${escapeHTML(support.caption)}</div>
+          <div class="small muted" style="margin-top:4px">${support.number}</div>
+        </div>
+        <div class="msg warn" style="margin:12px 0">Ringing...</div>
+        <button class="btn danger" onclick="endCall()">End Call</button>
+      </div>
+    `;
+    $('modalRoot').appendChild(modal);
+    
+    activeCall = setTimeout(() => {
+      if($('modalRoot').querySelector('.modal')) {
+        const msgEl = $('modalRoot').querySelector('.msg');
+        if(msgEl) {
+          msgEl.className = 'msg ok';
+          msgEl.textContent = 'Connected';
+        }
+      }
+    }, 3000);
+  }
+
+  function endCall() {
+    if(activeCall) {
+      clearTimeout(activeCall);
+      activeCall = null;
+    }
+    closeModal();
+  }
+
+  /* ========== PANEL SWITCHING ========== */
+  function showPanel(name){ 
+    ['panel-ambulance','panel-doctors','panel-appointments','panel-medicines','panel-telecalling'].forEach(id=>$(id).style.display='none'); 
+    $('panel-'+name).style.display = 'block'; 
+  }
+
+  /* ========== INIT ========== */
+  (function init(){
+    showPanel('ambulance');
+    loadAmbulances();
+    loadDoctors();
+    loadAppointments();
+    loadAllMedicines();
+    loadTelecalling();
+    populateDoctorDropdown();
+    setInterval(()=> { loadAmbulances(); }, 20000);
+  })();
+
+  window.HealthEase = { loadAmbulances, ambulances, sessions };
+
+  </script>
+</body>
+</html>
