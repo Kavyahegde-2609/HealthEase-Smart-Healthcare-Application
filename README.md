@@ -13,8 +13,10 @@ healthcare workflows and application structure rather than building a real-world
 ## Technologies Used
 - HTML
 - CSS
-- JavaScript (basic)
-- (Optional: Frameworks if used)
+- JavaScript
+- MongoDB
+- REST APIs
+- Postman
 
 ## Project Type
 Academic / Conceptual Project
