@@ -13,7 +13,7 @@ healthcare workflows and application structure rather than building a real-world
 ## Technologies Used
 - HTML
 - CSS
-- JavaScript
+- Node.js
 - MongoDB
 - REST APIs
 - Postman
