@@ -52,14 +52,14 @@
   </style>
 </head>
 <body>
-  <header>🏥 HealthEase — Live Dashboard</header>
+  <header> HealthEase — Live Dashboard</header>
 
   <div class="topbar">
-    <button type="button" onclick="showPanel('ambulance')">🚑 Ambulance</button>
-    <button type="button" onclick="showPanel('doctors')">👨‍⚕️ Doctors</button>
-    <button type="button" onclick="showPanel('appointments')">📅 Appointments</button>
-    <button type="button" onclick="showPanel('medicines')">💊 Medicine & Delivery</button>
-    <button type="button" onclick="showPanel('telecalling')">📞 Telecalling</button>
+    <button type="button" onclick="showPanel('ambulance')"> Ambulance</button>
+    <button type="button" onclick="showPanel('doctors')"> Doctors</button>
+    <button type="button" onclick="showPanel('appointments')"> Appointments</button>
+    <button type="button" onclick="showPanel('medicines')"> Medicine & Delivery</button>
+    <button type="button" onclick="showPanel('telecalling')"> Telecalling</button>
   </div>
 
   <div class="layout">
@@ -446,7 +446,7 @@
   function finishSession(s, reason){
     if(s.interval) clearInterval(s.interval);
     s.running = false;
-    s.card.innerHTML = `<div class="msg ok">✅ ${escapeHTML(s.ambulance.name)} has arrived. (${reason})</div>`;
+    s.card.innerHTML = `<div class="msg ok"> ${escapeHTML(s.ambulance.name)} has arrived. (${reason})</div>`;
     fetch(`${API_BASE}/ambulances/${encodeURIComponent(s.id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'Available' }) }).catch(()=>{});
     const idx = ambulances.findIndex(x=>x._id === s.id); if(idx>=0) { ambulances[idx].status = 'Available'; renderAmbList(); }
     setTimeout(()=> { if(sessions[s.id]) { delete sessions[s.id]; s.card.remove(); } }, 3000);
@@ -947,7 +947,7 @@
     const modal = elCreate('div', {class: 'modal'});
     modal.innerHTML = `
       <div class="modal-content" style="text-align:center">
-        <div style="font-size:64px;margin:20px 0">✅</div>
+        <div style="font-size:64px;margin:20px 0"></div>
         <div class="modal-header">Order Confirmed!</div>
         <div style="margin:16px 0">
           <div><strong>${escapeHTML(medicine.name)}</strong></div>
