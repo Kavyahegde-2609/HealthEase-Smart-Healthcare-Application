@@ -20,7 +20,7 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(()=> console.log('✅ Connected to MongoDB'))
+  .then(()=> console.log(' Connected to MongoDB'))
   .catch(err => {
     console.error('MongoDB connection error', err);
     process.exit(1);
@@ -37,4 +37,4 @@ app.use('/api/telecalling', telecallingRoutes);
 app.get('/api/health', (req,res)=> res.json({ ok:true, now: new Date() }));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, ()=> console.log(`🚀 Server listening on port ${PORT}`));
+app.listen(PORT, ()=> console.log(` Server listening on port ${PORT}`));
