@@ -80,7 +80,7 @@ cd backend
 npm install
 ```
 
-### 4. Run the backend server
+### 3. Run the backend server
 
 ```
 npm run dev
@@ -94,7 +94,7 @@ http://localhost:5000
 
 ---
 
-### 5. Open frontend
+### 4. Open frontend
 
 Go to:
 
