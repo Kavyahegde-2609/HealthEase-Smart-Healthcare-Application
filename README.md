@@ -123,7 +123,7 @@ Open it in  browser
 This project is built for learning and demonstration purposes.
 It simulates healthcare workflows and is not intended for real medical use.
 
-## Backend requires MongoDB configuration (`MONGO_URI`) to run fully.  
+Backend requires MongoDB configuration (MONGO_URI) to run fully.
 Without database setup, frontend demo features can still be explored.
 ---
 
